@@ -14,11 +14,11 @@ def composite_trapezoidal(f, r, N) :
     x = np.linspace(a,b,N+1) # points to evaluate
     h = float((b-a)) / N     # step size
     
-    I = 0                  # result of integration
-    I =+ f(a) * h/2        # first point
-    I =+ f(b) * h/2        # last point
-    
-    for i in range(N) :  # middle points
+    I = 0                    # result of integration
+    I =+ f(a) * h/2          # first point
+    I =+ f(b) * h/2          # last point
+      
+    for i in range(N) :      # middle points
         I += f(x[i]) * h
         
     return I
@@ -34,14 +34,14 @@ def composite_simpson(f, r, N) :
     x = np.linspace(a,b,N+1) # points to evaluate   
     h = float((b-a)) / N     # step size             
     
-    I = 0                  # result of integration
-    I =+ f(a) * h/6        # first point
-    I =+ f(b) * h/6        # last point
+    I = 0                    # result of integration
+    I =+ f(a) * h/6          # first point
+    I =+ f(b) * h/6          # last point
     
-    for i in range(1,N) :  # middle points: full steps
+    for i in range(1,N) :    # middle points: full steps
         I += 2*h/6 * f(x[i])
         
-    for i in range(1,N+1) :    # middle points: half steps
+    for i in range(1,N+1) :  # middle points: half steps
         I += 4*h/6 * f(x[i] - h/2)
         
     return I
@@ -55,13 +55,13 @@ def forward_euler(f, r, h, u0) :
        f: Function describing derivative of u
        r: Range to be evaluated over; [first, last]
        h: step size in x
-      u0: initial value of u
+      u0: list of initial values of system u
        '''
     a, b = r  
     N = int(float((b-a)) / h)
     x = np.linspace(a,b,N+1)
     
-    u = np.zeros(N+1) 
+    u = np.zeros((N+1, len(u0))) 
     u[0] = u0
     
     for i in range(1, N+1) : 
@@ -70,12 +70,12 @@ def forward_euler(f, r, h, u0) :
     return x, u
     
 
-def backward_euler(f, r, h, u0) :  
+def backward_euler(f, r, h, u0) :   
     '''Solves IVP u'=f(u,x), u(0) = u0
        f: Function describing derivative of u
        r: Range to be evaluated over; [first, last]
        h: step size in x
-      u0: initial value of u
+      u0: initial value of u ## add vector input
        '''
     a, b = r
     N = int(float((b-a)) / h)
@@ -105,7 +105,13 @@ def rk4(f, r, h, u0) :
     u[0] = u0
     
     for i in range(1, N+1) : 
-        
+        k1 = h*f(u[i-1],      x[i-1])
+        k2 = h*f(u[i-1]+k1/2, x[i-1]+h/2)
+        k3 = h*f(u[i-1]+k2/2, x[i-1]+h/2)
+        k4 = h*f(u[i-1]+k3,   x[i-1]+h)
+        u[i] = u[i-1] + (k2 + k3)/3 + k4/6
+    
+    return x, u
 
 #-------------------------------------------------------------------------------
 # ------------------------ Optimization & Root Finding -------------------------
@@ -139,7 +145,4 @@ def newton_solver(f, x0, tol) :
         x += dx
     
     return x
-    
-    
-    
     
