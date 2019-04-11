@@ -20,7 +20,7 @@ def composite_trapezoidal(f, r, N) :
       
     for i in range(N) :      # middle points
         I += f(x[i]) * h
-        
+    
     return I
     
     
@@ -47,21 +47,21 @@ def composite_simpson(f, r, N) :
     return I
         
 #-------------------------------------------------------------------------------
-# --------------------------- Differential Equations ---------------------------
+# -------------------------------- ODE Solvers ---------------------------------
 #-------------------------------------------------------------------------------
                         
 def forward_euler(f, r, h, u0) : 
-    '''Solves IVP u'=f(u,x), u(0) = u0
+    '''Solves IVP u'=f(u,x), u(0) = u0 with forward Euler method
        f: Function describing derivative of u
        r: Range to be evaluated over; [first, last]
        h: step size in x
       u0: list of initial values of system u
        '''
     a, b = r  
-    N = int(float((b-a)) / h)
-    x = np.linspace(a,b,N+1)
+    N = int(float((b-a)) / h)     # number of steps 
+    x = np.linspace(a,b,N+1)      # x points to evaluate
     
-    u = np.zeros((N+1, len(u0))) 
+    u = np.zeros((N+1, len(u0)))  # solution array
     u[0] = u0
     
     for i in range(1, N+1) : 
@@ -71,63 +71,98 @@ def forward_euler(f, r, h, u0) :
     
 
 def backward_euler(f, r, h, u0) :   
-    '''Solves IVP u'=f(u,x), u(0) = u0
+    '''Solves IVP u'=f(u,x), u(0) = u0 with backward Euler method
        f: Function describing derivative of u
        r: Range to be evaluated over; [first, last]
        h: step size in x
       u0: initial value of u ## add vector input
        '''
     a, b = r
-    N = int(float((b-a)) / h)
-    x = np.linspace(a,b,N+1)
-    
-    u = np.zeros(N+1) 
+    N = int(float((b-a)) / h)   # number of steps 
+    x = np.linspace(a,b,N+1)    # x points to evaluate
+      
+    u = np.zeros(N+1)           # solution array
     u[0] = u0
      
-    for i in range(1, N+1) : 
-        u[i] = newton_solver(lambda y: u[i-1] + h*f(y, x[i]) - y, u[i-1], 1e-5)
+    for i in range(1, N+1) :    # solving for u in implicit eq. for each step
+        u[i] = newton_root(lambda y: u[i-1] + h*f(y, x[i]) - y, u[i-1], 1e-5)
    
     return x, u  
- 
+
+
+def get_rk_matrices(method) : 
+    '''Returns A, b, and c matrices for specified Runge Kutta method'''
+    matrices = {
+                
+                'RK2':       [np.array([[0, 0],
+                                    [0.5, 0]]), 
+                              np.array([0, 1]), 
+                              np.array([0, 0.5])],
+                
+                'RK4':       [np.array([[0, 0, 0, 0],
+                                  [0.5, 0, 0, 0],
+                                  [0, 0.5, 0, 0],
+                                  [0, 0, 1, 0]]), 
+                              np.array([1/6., 1/3., 1/3., 1/6.]), 
+                              np.array([0, 0.5, 0.5, 1])],
+                
+           'Fehlberg':   [np.array([[0, 0, 0, 0, 0, 0], 
+                                [0.25, 0, 0, 0, 0, 0], 
+                                [3/32., 9/32., 0, 0, 0, 0], 
+                                [1932/2197., -7200/2197., 7296/2197., 0, 0, 0], 
+                                [ 4390/216., -8, 3680/513., -845/4104., 0, 0], 
+                                [-8/27., 2,-3544/2565., 1859/4104.,-11/40.,0]]),
+                np.array([[16/135., 0, 6656/12825.,28561/56430., -9/50., 2/55.], 
+                           [25/216., 0, 1408/2565., 2197/4104., -.2, 0]]),
+                np.array([0, .25, 3/8., 12/13., 1, 0.5])]
     
-def rk4(f, r, h, u0) : 
-    '''Uses 4th order Runge-Kutta to solve IVP u' = f(u,x), u(0)=u0
-       f: Function describing derivative of u
-       r: Range to be evaluated over; [first, last]
-       h: step size in x
-      u0: list of initial values of system u
+                }
+    return matrices[method]
+ 
+
+def runge_kutta(f, r, h, u0, method) :  
+    '''Uses specified Runge-Kutta method to solve IVP u' = f(u,x), u(0)=u0
+         f: Function describing derivative of u
+         r: Range to be evaluated over; [first, last]
+         h: step size in x
+        u0: list of initial values of system u
+    method: 'RK2', 'RK4', ...
     '''
     a, b = r
-    N = int(float((b-a)) / h)
-    x = np.linspace(a,b,N+1)
+    N = int(float((b-a)) / h)    # number of steps 
+    x = np.linspace(a,b,N+1)     # x points to evaluate
     
-    u = np.zeros((N+1, len(u0)))
+    u = np.zeros((N+1, len(u0))) # solution array
     u[0] = u0
     
+    A,b,c = get_rk_matrices(method)
+    k = np.zeros(len(A))
+ 
     for i in range(1, N+1) : 
-        k1 = h*f(u[i-1],      x[i-1])
-        k2 = h*f(u[i-1]+k1/2, x[i-1]+h/2)
-        k3 = h*f(u[i-1]+k2/2, x[i-1]+h/2)
-        k4 = h*f(u[i-1]+k3,   x[i-1]+h)
-        u[i] = u[i-1] + (k2 + k3)/3 + k4/6
-    
+        for j in range(len(k)) : 
+            k[j] = h*f(u[i-1] + np.dot(A[j], k), x[i-1] + c[j]*h)
+        u[i] = u[i-1] + np.dot(b, k)
     return x, u
+    
+#def runge_kutta_adaptive(f, r, h, u0, method) : 
+                
+
 
 #-------------------------------------------------------------------------------
 # ------------------------ Optimization & Root Finding -------------------------
 #-------------------------------------------------------------------------------
                     
       
-def newton_solver(f, x0, tol) : 
-    '''finds a root of the given function
+def newton_root(f, x0, tol) : 
+    '''returns a root of the given function using the Newton method
         f: Function to find root of 
        x0: initial guess
-      tol: tolerance for zero
+      tol: tolerance for the zero
     '''
-    h = 1e-5    # step size for differentiation
-    error = 1   
-    num_iters = 0
-    x = x0
+    h = 1e-5       # step size for differentiation
+    error = 1      # error to check for converence
+    num_iters = 0  # number of iterations
+    x = x0         # initializing x 
     
     while error > tol : 
         # check for non-convergence
@@ -135,7 +170,6 @@ def newton_solver(f, x0, tol) :
             break
             
         num_iters += 1
-        
         # numerical differentiation
         df = (f(x+h)  - f(x-h)) / (2*h)
         dx = -f(x) / df
