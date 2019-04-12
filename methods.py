@@ -68,7 +68,7 @@ def forward_euler(f, r, h, u0) :
         u[i] = u[i-1] + h*f(u[i-1], x[i-1])
         
     return x, u
-    
+
 
 def backward_euler(f, r, h, u0) :   
     '''Solves IVP u'=f(u,x), u(0) = u0 with backward Euler method
@@ -76,7 +76,7 @@ def backward_euler(f, r, h, u0) :
        r: Range to be evaluated over; [first, last]
        h: step size in x
       u0: initial value of u ## add vector input
-       '''
+    '''
     a, b = r
     N = int(float((b-a)) / h)   # number of steps 
     x = np.linspace(a,b,N+1)    # x points to evaluate
@@ -89,6 +89,47 @@ def backward_euler(f, r, h, u0) :
    
     return x, u  
 
+
+def trapezoidal_ode(f, r, h, u0) : 
+    '''Solves IVP u'=f(u,x), u(0) = u0 with trapezoidal method
+       f: Function describing derivative of u
+       r: Range to be evaluated over; [first, last]
+       h: step size in x
+      u0: initial value of u ## add vector input
+    '''
+    a, b = r
+    N = int(float((b-a)) / h)   # number of steps 
+    x = np.linspace(a,b,N+1)    # x points to evaluate
+      
+    u = np.zeros(N+1)           # solution array
+    u[0] = u0
+    
+    for i in range(1, N+1) :    # solving for u in implicit eq. for each step
+        u[i] = newton_root(lambda y: u[i-1] + h/2*(f(y, x[i])+ f(u[i-1], x[i-1]))
+                                                             - y, u[i-1], 1e-5)
+        
+    return x, u  
+ 
+ 
+def midpoint_2step(f, r, h, u0) : 
+    '''Solves IVP u'=f(u,x), u(0) = u0 with 2-step midpoint method
+       f: Function describing derivative of u
+       r: Range to be evaluated over; [first, last]
+       h: step size in x
+      u0: First two values of u; [u0,u1]
+    '''
+    a, b = r
+    N = int(float((b-a)) / h)   # number of steps 
+    x = np.linspace(a,b,N+1)    # x points to evaluate
+      
+    u = np.zeros(N+1)           # solution array
+    u[0:2] = u0
+    for i in range(2, N+1) :
+        u[i] = u[i-2] + 2*h*f(u[i-1], x[i-1])
+     
+    return x, u
+     
+ 
 
 def get_rk_matrices(method) : 
     '''Returns A, b, and c matrices for specified Runge Kutta method'''
@@ -135,7 +176,7 @@ def runge_kutta(f, r, h, u0, method) :
     u = np.zeros((N+1, len(u0))) # solution array
     u[0] = u0
     
-    A,b,c = get_rk_matrices(method)
+    A,b,c = get_rk_matrices(method) # getting coefficients for method used
     k = np.zeros(len(A))
  
     for i in range(1, N+1) : 
