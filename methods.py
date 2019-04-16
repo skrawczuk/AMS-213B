@@ -204,7 +204,7 @@ def runge_kutta_adaptive(f, r, h, u0, method, eps) :
     
     while x[-1] <= x_f :            # evaluating until final x is reached
         
-        error = eps + 1
+        error = eps + 1             # initalizing error for each step
         while error >= eps :        # evaluating step until error satisfied
             for j in range(len(k)) : 
                 k[j] = h*f(u[-1] + np.dot(A[j], k), x[-1] + c[j]*h)
@@ -217,7 +217,7 @@ def runge_kutta_adaptive(f, r, h, u0, method, eps) :
                 d = (eps/error)**2 
                 h = d*h
         
-        x.append(x[-1] + h)
+        x.append(x[-1] + h)         # adding x and u to array
         u.append(u_high)
         
     x = np.array(x)
