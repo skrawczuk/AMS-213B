@@ -22,8 +22,8 @@ def composite_trapezoidal(f, r, N) :
         I += f(x[i]) * h
     
     return I
-    
-    
+
+
 def composite_simpson(f, r, N) : 
     '''Integration by composite Simpson's rule.
        f: Function being integrated
@@ -40,7 +40,7 @@ def composite_simpson(f, r, N) :
     
     for i in range(1,N) :    # middle points: full steps
         I += 2*h/6 * f(x[i])
-        
+    
     for i in range(1,N+1) :  # middle points: half steps
         I += 4*h/6 * f(x[i] - h/2)
         
@@ -169,9 +169,9 @@ def runge_kutta(f, r, h, u0, method) :
         u0: list of initial values of system u
     method: 'RK2', 'RK4', ...
     '''
-    a, b = r
-    N = int(float((b-a)) / h)    # number of steps 
-    x = np.linspace(a,b,N+1)     # x points to evaluate
+    x_0, x_f = r
+    N = int(float((x_f-x_0)) / h)    # number of steps 
+    x = np.linspace(x_0,x_f,N+1)     # x points to evaluate
     
     u = np.zeros((N+1, len(u0))) # solution array
     u[0] = u0
@@ -183,10 +183,48 @@ def runge_kutta(f, r, h, u0, method) :
         for j in range(len(k)) : 
             k[j] = h*f(u[i-1] + np.dot(A[j], k), x[i-1] + c[j]*h)
         u[i] = u[i-1] + np.dot(b, k)
+        
     return x, u
     
-#def runge_kutta_adaptive(f, r, h, u0, method) : 
+def runge_kutta_adaptive(f, r, h, u0, method, eps) : 
+    '''Uses specified Runge-Kutta method to solve IVP u' = f(u,x), u(0)=u0
+         f: Function describing derivative of u
+         r: Range to be evaluated over; [first, last]
+         h: step size in x
+        u0: list of initial values of system u
+    method: 'Felhberg', ...
+       eps; error threshold for adaptive step
+    '''
+    x_0, x_f = r
+    x = [x_0]                       # points to be evaluated over 
+    u = u0                          # solution array
+
+    A,b,c = get_rk_matrices(method) # getting coefficients for method used
+    k = np.zeros(len(A)) 
+    
+    while x[-1] <= x_f :            # evaluating until final x is reached
+        
+        error = eps + 1
+        while error >= eps :        # evaluating step until error satisfied
+            for j in range(len(k)) : 
+                k[j] = h*f(u[-1] + np.dot(A[j], k), x[-1] + c[j]*h)
                 
+            u_high = u[-1] + np.dot(b[0], k)   # using higher order b
+            u_low = u[-1] + np.dot(b[1], k)    # using lower order b 
+            error = (u_high - u_low) / h       # numerical error at step
+            
+            if error >= eps :       # updating timestep if error is high 
+                d = (eps/error)**2 
+                h = d*h
+        
+        x.append(x[-1] + h)
+        u.append(u_high)
+        
+    x = np.array(x)
+    u = np.array(u)
+    
+    return x, u
+                            
 
 
 #-------------------------------------------------------------------------------
