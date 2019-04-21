@@ -173,11 +173,11 @@ def runge_kutta(f, r, h, u0, method) :
     N = int(float((x_f-x_0)) / h)    # number of steps 
     x = np.linspace(x_0,x_f,N+1)     # x points to evaluate
     
-    u = np.zeros((N+1, len(u0))) # solution array
+    u = np.zeros((N+1, len(u0)))     # solution array
     u[0] = u0
     
-    A,b,c = get_rk_matrices(method) # getting coefficients for method used
-    k = np.zeros(len(A))
+    A,b,c = get_rk_matrices(method)  # getting coefficients for method used
+    k = np.zeros((len(A), len(u0)))
  
     for i in range(1, N+1) : 
         for j in range(len(k)) : 
@@ -193,14 +193,14 @@ def runge_kutta_adaptive(f, r, h, u0, method, eps) :
          h: step size in x
         u0: list of initial values of system u
     method: 'Felhberg', ...
-       eps; error threshold for adaptive step
+       eps: error threshold for adaptive step
     '''
     x_0, x_f = r
     x = [x_0]                       # points to be evaluated over 
     u = u0                          # solution array
 
     A,b,c = get_rk_matrices(method) # getting coefficients for method used
-    k = np.zeros(len(A)) 
+    k = np.zeros(len(A), len(u0)) 
     
     while x[-1] <= x_f :            # evaluating until final x is reached
         
