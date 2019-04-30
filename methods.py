@@ -131,7 +131,7 @@ def midpoint_2step(f, r, h, u0) :
      
  
 
-def get_rk_matrices(method) : 
+def get_rk_matrices(method, alpha=0) : 
     '''Returns A, b, and c matrices for specified Runge Kutta method'''
     matrices = {
                 
@@ -146,7 +146,12 @@ def get_rk_matrices(method) :
                                   [0, 0, 1, 0]]), 
                               np.array([1/6., 1/3., 1/3., 1/6.]), 
                               np.array([0, 0.5, 0.5, 1])],
-                
+
+            '2S-DIRK':       [np.array([[alpha, 0],
+                                [1-alpha, alpha]]), 
+                              np.array([1-alpha, alpha]), 
+                              np.array([alpha, 1.])],               
+                                                
            'Fehlberg':   [np.array([[0, 0, 0, 0, 0, 0], 
                                 [0.25, 0, 0, 0, 0, 0], 
                                 [3/32., 9/32., 0, 0, 0, 0], 
@@ -156,6 +161,8 @@ def get_rk_matrices(method) :
                 np.array([[16/135., 0, 6656/12825.,28561/56430., -9/50., 2/55.], 
                            [25/216., 0, 1408/2565., 2197/4104., -.2, 0]]),
                 np.array([0, .25, 3/8., 12/13., 1, 0.5])]
+            
+
     
                 }
     return matrices[method]
@@ -186,6 +193,40 @@ def runge_kutta(f, r, h, u0, method) :
         
     return x, u
     
+
+def runge_kutta_implicit(f, r, h, u0, method, alpha) :  
+    '''Uses an implicit Runge-Kutta method to solve IVP u' = f(u,x), u(0)=u0
+         f: Function describing derivative of u
+         r: Range to be evaluated over; [first, last]
+         h: step size in x
+        u0: list of initial values of system u
+    method: '2S-DIRK', ...
+     alpha: value of alpha for method
+    '''
+    x_0, x_f = r
+    N = int(float((x_f-x_0)) / h)    # number of steps 
+    x = np.linspace(x_0,x_f,N+1)     # x points to evaluate
+    
+    u = np.zeros((N+1, len(u0)))     # solution array
+    u[0] = u0
+    
+    A,b,c = get_rk_matrices(method, alpha=alpha) 
+    k = np.zeros((len(A), len(u0)))
+ 
+    for i in range(1, N+1) : 
+        for j in range(1,len(k)) : 
+            #defining rk1 - h*f(...) = 0
+            k_j = lambda y: y-h*f(u[i-1] + np.dot(A[:,:j], k[:j]) +# sum until j
+                            np.dot(A[j,:j],k[:j]) + A[j,j]*y,    # sum at line j
+                            x[i-1] + c[j]*h)
+            # solve for k[j]
+            k[j] = newton_root(k_j, 0, 1e-5)
+            
+        u[i] = u[i-1] + np.dot(b, k)
+        
+    return x, u
+    
+    
 def runge_kutta_adaptive(f, r, h, u0, method, eps) : 
     '''Uses specified Runge-Kutta method to solve IVP u' = f(u,x), u(0)=u0
          f: Function describing derivative of u
@@ -196,39 +237,40 @@ def runge_kutta_adaptive(f, r, h, u0, method, eps) :
        eps: error threshold for adaptive step
     '''
     x_0, x_f = r
-    x = [x_0]                       # points to be evaluated over 
-    u = u0                          # solution array
-
-    A,b,c = get_rk_matrices(method) # getting coefficients for method used
-    k = np.zeros(len(A), len(u0)) 
+    x = [x_0]                           # points to be evaluated over 
+    u = [u0]                            # solution array
+    A,b,c = get_rk_matrices(method)     # getting coefficients for method used
+    k = np.zeros((len(A), len(u0)))
     
-    while x[-1] <= x_f :            # evaluating until final x is reached
-        
-        error = eps + 1             # initalizing error for each step
-        while error >= eps :        # evaluating step until error satisfied
+    while x[-1] <= x_f :                # evaluating until final x is reached
+        error = eps + 1                 # initalizing error for each step
+        while error >= eps :            # evaluating step until error satisfied
             for j in range(len(k)) : 
                 k[j] = h*f(u[-1] + np.dot(A[j], k), x[-1] + c[j]*h)
-                
-            u_high = u[-1] + np.dot(b[0], k)   # using higher order b
-            u_low = u[-1] + np.dot(b[1], k)    # using lower order b 
-            error = (u_high - u_low) / h       # numerical error at step
             
-            if error >= eps :       # updating timestep if error is high 
-                d = (eps/error)**2 
+            u_5 = u[-1] + np.dot(b[0], k)        # using higher order b
+            u_4 = u[-1] + np.dot(b[1], k)        # using lower order b 
+            error = np.abs((u_5 - u_4)[0]) / h   # numerical error at step
+             
+            d = (0.5*eps/error)**(0.25)     # updating timestep
+            if d > 4 : 
+                h = 4*h
+            elif d < 0.1 : 
+                h = 0.1*h
+            else : 
                 h = d*h
-        
-        x.append(x[-1] + h)         # adding x and u to array
-        u.append(u_high)
+
+        x.append(x[-1] + h)             # adding x and u to array
+        u.append(u_5)     
         
     x = np.array(x)
     u = np.array(u)
     
     return x, u
                             
-
-
+                            
 #-------------------------------------------------------------------------------
-# ------------------------ Optimization & Root Finding -------------------------
+# ---------------------------------- Root Finding ------------------------------
 #-------------------------------------------------------------------------------
                     
       
