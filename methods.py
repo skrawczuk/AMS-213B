@@ -156,7 +156,7 @@ def get_rk_matrices(method, alpha=0) :
                                 [0.25, 0, 0, 0, 0, 0], 
                                 [3/32., 9/32., 0, 0, 0, 0], 
                                 [1932/2197., -7200/2197., 7296/2197., 0, 0, 0], 
-                                [ 4390/216., -8, 3680/513., -845/4104., 0, 0], 
+                                [ 439/216., -8, 3680/513., -845/4104., 0, 0], 
                                 [-8/27., 2,-3544/2565., 1859/4104.,-11/40.,0]]),
                 np.array([[16/135., 0, 6656/12825.,28561/56430., -9/50., 2/55.], 
                            [25/216., 0, 1408/2565., 2197/4104., -.2, 0]]),
@@ -215,12 +215,11 @@ def runge_kutta_implicit(f, r, h, u0, method, alpha) :
  
     for i in range(1, N+1) : 
         for j in range(1,len(k)) : 
-            #defining rk1 - h*f(...) = 0
-            k_j = lambda y: y-h*f(u[i-1] + np.dot(A[:,:j], k[:j]) +# sum until j
-                            np.dot(A[j,:j],k[:j]) + A[j,j]*y,    # sum at line j
-                            x[i-1] + c[j]*h)
-            # solve for k[j]
-            k[j] = newton_root(k_j, 0, 1e-5)
+            #defining k1 - h*f(...) = 0
+            k_j = lambda y: y-h*f(u[i-1] + np.dot(A[j], k) # sum of row
+                                - A[j,j]*k[j] + y*A[j,j],  # solve for diagonal
+                                  x[i-1] + c[j]*h)
+            k[j] = newton_root(k_j, 0, 1e-5)     # solving for jth element of k
             
         u[i] = u[i-1] + np.dot(b, k)
         
@@ -241,7 +240,6 @@ def runge_kutta_adaptive(f, r, h, u0, method, eps) :
     u = [u0]                            # solution array
     A,b,c = get_rk_matrices(method)     # getting coefficients for method used
     k = np.zeros((len(A), len(u0)))
-    
     while x[-1] <= x_f :                # evaluating until final x is reached
         error = eps + 1                 # initalizing error for each step
         while error >= eps :            # evaluating step until error satisfied
@@ -252,23 +250,32 @@ def runge_kutta_adaptive(f, r, h, u0, method, eps) :
             u_4 = u[-1] + np.dot(b[1], k)        # using lower order b 
             error = np.abs((u_5 - u_4)[0]) / h   # numerical error at step
              
-            d = (0.5*eps/error)**(0.25)     # updating timestep
+            d = (0.5*eps/error)**(0.25)  # updating timestep
             if d > 4 : 
                 h = 4*h
             elif d < 0.1 : 
                 h = 0.1*h
             else : 
                 h = d*h
-
         x.append(x[-1] + h)             # adding x and u to array
         u.append(u_5)     
         
     x = np.array(x)
     u = np.array(u)
-    
+
     return x, u
                             
-                            
+  
+#def BDF(f, r, h, u0, steps) :   
+    '''Uses specified Runge-Kutta method to solve IVP u' = f(u,x), u(0)=u0
+         f: Function describing derivative of u
+         r: Range to be evaluated over; [first, last]
+         h: step size in x
+        u0: list of initial values of system u
+     steps: number of steps to use (2,3, or 4)
+    '''  
+    
+                                                                                                                                                                
 #-------------------------------------------------------------------------------
 # ---------------------------------- Root Finding ------------------------------
 #-------------------------------------------------------------------------------
@@ -284,8 +291,8 @@ def newton_root(f, x0, tol) :
     error = 1      # error to check for converence
     num_iters = 0  # number of iterations
     x = x0         # initializing x 
-    
-    while error > tol : 
+
+    while error > tol :  
         # check for non-convergence
         if num_iters > 40 :  
             break
@@ -298,6 +305,6 @@ def newton_root(f, x0, tol) :
         # update error and x
         error = np.abs(dx)
         x += dx
-    
+
     return x
     
