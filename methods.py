@@ -291,11 +291,11 @@ def FDM_BVP(p, q, g, r, h, ua, ub) :
     '''Uses finite difference method to solve boundary value problem: 
        u'' + p(x)u' + q(x)u = g(x)
        u(a) = ua, u(b) = ub
-   p, q, g: 
+   p, q, g: coefficients of u terms in ODE
          r: Range to be evaluated over; [a, b]
          h: step size in x
-        ua: value at u(a) ##
-        ub: value at u(b) ## combine these
+        ua: value at u(a) 
+        ub: value at u(b) 
     ''' 
     a, b = r
     N = int(float((b-a)) / h)  
