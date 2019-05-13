@@ -258,7 +258,7 @@ def runge_kutta_adaptive(f, r, h, u0, method, eps) :
                 h = 0.1*h
             else : 
                 h = d*h
-        x.append(x[-1] + h)             # adding x and u to array
+        x.append(x[-1] + h)  # adding x and u to array
         u.append(u_5)     
         
     x = np.array(x)
@@ -273,7 +273,6 @@ def BDF2(f, r, h, u0) :
          r: Range to be evaluated over; [first, last]
          h: step size in x
         u0: list of initial values of system u
-     steps: number of steps to use (2,3, or 4) ## to do
     '''  
     a, b = r
     N = int(float((b-a)) / h)   # number of steps 
@@ -305,22 +304,14 @@ def FDM_BVP(p, q, g, r, h, ua, ub) :
     A = np.zeros((N+2,N+2))
     B = np.zeros(N+2)
     
-    # setting first and last points Au_{0} = ua, Au_{N+2} = ub
+    # setting boundary points: Au_{0} = ua, Au_{N+1} = ub
     A[0,0] = 1
     B[0] = ua
     A[-1,-1] = 1
     B[-1] = ub
     
-    # constructing edges of A and B (Lec. 8 p. 3-4)
-    A[1,1]   = -2/h**2 + q(x[0])
-    A[1,2]   = 1/h**2 + p(x[0])/(2*h)
-    B[1]     = g(x[0]) - (1/h**2 - p(x[0])/(2*h))*ua
-    A[N,N-1] = 1/h**2 - p(x[N+1])/(2*h)
-    A[N,N]   = -2/h**2 + q(x[N+1])
-    B[N]     = g(x[N+1]) - (1/h**2 + p(x[N+1])/(2*h))*ub
-    
-    # constructing A & B for the rest of the points
-    for i in range(2, len(A)-2) :  
+    # constructing A & B for the rest of the points (Lec. 8 p. 3-4)
+    for i in range(1, len(A)-1) :  
         A[i,i-1] = 1/h**2 - p(x[i])/(2*h)
         A[i,i  ] = -2/h**2 + q(x[i])
         A[i,i+1] = 1/h**2 + p(x[i])/(2*h)
