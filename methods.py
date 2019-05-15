@@ -322,7 +322,137 @@ def FDM_BVP(p, q, g, r, h, ua, ub) :
     return x, u  
     
 
+#-------------------------------------------------------------------------------
+# -------------------------------- PDE Solvers ---------------------------------
+#-------------------------------------------------------------------------------
+
+def FTCS_heat(f, g1, g2, rx, rt, dx, dt) : 
+    '''solves IBVP u_t = u_xx, u(x,0)=f(x), u(a,t)=g1(t), u(b,t)=g2(t)
+       for a<=x<=b, t>0
+       sing forward-time central-space method
+   f,g1,g2: functions describing initial and boundary conditions
+        rx: range of x; [a, b]
+        rt: range of t; [t0, tf]
+        dx: step in x
+        dt: step in t
+    '''   
+    a, b =  rx
+    t0, tf = rt
+    x = np.arange(a,  b+dx,  dx)
+    t = np.arange(t0, tf+dt, dt)
+    u = np.zeros((len(x),len(t)))
     
+    r = dt/dx**2
+    nx = len(x)
+    nt = len(t)
+    # setting initial and boundary conditions
+    u[ :,0] = f(x)
+    u[ 0,:] = g1(t)
+    u[-1,:] = g2(t)
+    
+    for i in range(nt-1) :
+        u[1:nx-1, i+1] = u[1:nx-1, i] + r*(u[2:nx,i] - 
+                                         2*u[1:nx-1,i] + 
+                                           u[0:nx-2,i])
+    
+    return t, x, u
+    
+
+def BTCS_heat(f, g1, g2, rx, rt, dx, dt) : 
+    '''solves IBVP u_t = u_xx, u(x,0)=f(x), u(a,t)=g1(t), u(b,t)=g2(t)
+       for a<=x<=b, t>0 
+       using backward-time, central-space method
+   f,g1,g2: functions describing initial and boundary conditions
+        rx: range of x; [a, b]
+        rt: range of t; [t0, tf]
+        dx: step in x
+        dt: step in t
+    '''   
+    a, b =  rx
+    t0, tf = rt
+    x = np.arange(a,  b+dx,  dx)
+    t = np.arange(t0, tf+dt, dt)
+    u = np.zeros((len(x),len(t)))
+    
+    r = dt/dx**2
+    nx = len(x)
+    nt = len(t)
+    
+    # setting initial conditions
+    u[ :,0] = f(x)
+    u[ 0,:] = g1(t)
+    u[-1,:] = g2(t)
+    
+    # solve Au_{n+1} = B
+    #constructing A
+    A = np.zeros((nx,nx))
+    A[0,0] = 1
+    A[-1,-1] = 1
+    for j in range(1,nx-1) : 
+        A[j, j-1] = r
+        A[j, j  ] = -(1+2*r)
+        A[j, j+1] = r
+    
+    B = np.zeros(nx)
+    for i in range(nt-1) :
+        # constructing B for timestep
+        B[0]  = g1(t[i+1])
+        B[-1] = g2(t[i+1]) 
+        B[1:nx-1] = -u[1:nx-1,i]
+        
+        # solve linear system 
+        u[:,i+1] = np.linalg.solve(A, B)
+    
+    return t, x, u
+       
+def crank_nicolsen_heat(f, g1, g2, rx, rt, dx, dt) : 
+    '''solves IBVP u_t = u_xx, u(x,0)=f(x), u(a,t)=g1(t), u(b,t)=g2(t)
+       for a<=x<=b, t>0
+       using crank-nicolsen method
+   f,g1,g2: functions describing initial and boundary conditions
+        rx: range of x; [a, b]
+        rt: range of t; [t0, tf]
+        dx: step in x
+        dt: step in t
+    '''   
+    a, b =  rx
+    t0, tf = rt
+    x = np.arange(a,  b+dx,  dx)
+    t = np.arange(t0, tf+dt, dt)
+    u = np.zeros((len(x),len(t)))
+    
+    r = dt/dx**2
+    nx = len(x)
+    nt = len(t)
+    
+    # setting initial conditions
+    u[ :,0] = f(x)
+    u[ 0,:] = g1(t)
+    u[-1,:] = g2(t)
+    
+    # solve Au_{n+1} = B:
+    #constructing A
+    A = np.zeros((nx,nx))
+    A[0,0] = 1
+    A[-1,-1] = 1
+    for j in range(1,nx-1) : 
+        A[j, j-1] = -r/2
+        A[j, j  ] = (1+r)
+        A[j, j+1] = -r/2
+    
+    B = np.zeros(nx) 
+    for i in range(nt-1) :
+        # constructing B for timestep
+        B[0]  = g1(t[i+1])
+        B[-1] = g2(t[i+1]) 
+        B[1:nx-1] = (r/2*(u[0:nx-2,i] + u[2:nx,i]) + (1-r)*u[1:nx-1,i])
+        
+        # solve linear system 
+        u[:,i+1] = np.linalg.solve(A, B)
+    
+    return t, x, u
+                                
+                                                       
 #-------------------------------------------------------------------------------
 # ---------------------------------- Root Finding ------------------------------
 #-------------------------------------------------------------------------------
@@ -354,3 +484,4 @@ def newton_root(f, x0, tol) :
         x += dx
 
     return x
+    
