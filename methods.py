@@ -1,8 +1,17 @@
 import numpy as np
 
 #-------------------------------------------------------------------------------
-# --------------------------- Numerical Integration ----------------------------
+# ------------------ Numerical Integration & differentiation -------------------
 #-------------------------------------------------------------------------------
+
+def diff_1st_order(f, x, h) : 
+    '''Takes the first order derivative of function f at given x
+       f: Function to be differentiated
+       x: values at which derivative is evaluated
+       h: step size for derivation
+    '''
+    return  (f(x+h) - f(x)) / h
+    
 
 def composite_trapezoidal(f, r, N) : 
     '''Integration by composite trapezoidal rule.
@@ -106,7 +115,7 @@ def trapezoidal_ode(f, r, h, u0) :
     u[0] = u0
     
     for i in range(1, N+1) :    # solving for u in implicit eq. for each step
-        u[i] = newton_root(lambda y: u[i-1] + h/2*(f(y, x[i])+ f(u[i-1], x[i-1]))
+        u[i] = newton_root(lambda y: u[i-1] + h/2*(f(y, x[i])+f(u[i-1], x[i-1]))
                                                              - y, u[i-1], 1e-5)
         
     return x, u  
@@ -329,14 +338,14 @@ def FDM_BVP(p, q, g, r, h, ua, ub) :
 def FTCS_heat(f, g1, g2, rx, rt, dx, dt) : 
     '''solves IBVP u_t = u_xx, u(x,0)=f(x), u(a,t)=g1(t), u(b,t)=g2(t)
        for a<=x<=b, t>0
-       sing forward-time central-space method
+       using forward-time central-space method
    f,g1,g2: functions describing initial and boundary conditions
         rx: range of x; [a, b]
         rt: range of t; [t0, tf]
         dx: step in x
         dt: step in t
     '''   
-    a, b =  rx
+    a, b   = rx
     t0, tf = rt
     x = np.arange(a,  b+dx,  dx)
     t = np.arange(t0, tf+dt, dt)
@@ -368,7 +377,7 @@ def BTCS_heat(f, g1, g2, rx, rt, dx, dt) :
         dx: step in x
         dt: step in t
     '''   
-    a, b =  rx
+    a, b   = rx
     t0, tf = rt
     x = np.arange(a,  b+dx,  dx)
     t = np.arange(t0, tf+dt, dt)
@@ -404,8 +413,9 @@ def BTCS_heat(f, g1, g2, rx, rt, dx, dt) :
         u[:,i+1] = np.linalg.solve(A, B)
     
     return t, x, u
+    
        
-def crank_nicolsen_heat(f, g1, g2, rx, rt, dx, dt) : 
+def crank_nicolson_heat(f, g1, g2, rx, rt, dx, dt) :
     '''solves IBVP u_t = u_xx, u(x,0)=f(x), u(a,t)=g1(t), u(b,t)=g2(t)
        for a<=x<=b, t>0
        using crank-nicolsen method
@@ -414,8 +424,8 @@ def crank_nicolsen_heat(f, g1, g2, rx, rt, dx, dt) :
         rt: range of t; [t0, tf]
         dx: step in x
         dt: step in t
-    '''   
-    a, b =  rx
+    ''' 
+    a, b   = rx
     t0, tf = rt
     x = np.arange(a,  b+dx,  dx)
     t = np.arange(t0, tf+dt, dt)
@@ -437,7 +447,7 @@ def crank_nicolsen_heat(f, g1, g2, rx, rt, dx, dt) :
     A[-1,-1] = 1
     for j in range(1,nx-1) : 
         A[j, j-1] = -r/2
-        A[j, j  ] = (1+r)
+        A[j, j  ] = 1+r
         A[j, j+1] = -r/2
     
     B = np.zeros(nx) 
@@ -445,14 +455,109 @@ def crank_nicolsen_heat(f, g1, g2, rx, rt, dx, dt) :
         # constructing B for timestep
         B[0]  = g1(t[i+1])
         B[-1] = g2(t[i+1]) 
-        B[1:nx-1] = (r/2*(u[0:nx-2,i] + u[2:nx,i]) + (1-r)*u[1:nx-1,i])
+        B[1:nx-1] = r/2*(u[0:nx-2,i] + u[2:nx,i]) + (1-r)*u[1:nx-1,i]
         
-        # solve linear system 
+        # solve linear system         
         u[:,i+1] = np.linalg.solve(A, B)
     
     return t, x, u
-                                
-                                                       
+                                                                   
+
+def upwind_hyperbolic(f, g1, g2, k, rx, rt, dx, dt) : 
+    '''Solves IBVP u_t + k*u_x = 0, u(x,0)=f(x), u(a,t)=g1(t), u(b,t)=g2(t) 
+       for a<=x<=b, t>0
+       using the upwind method                                            
+   f,g1,g2: functions describing initial and boundary conditions
+         k: coefficient of u_x term
+        rx: range of x; [a, b]
+        rt: range of t; [t0, tf]
+        dx: step in x
+        dt: step in t
+    '''
+    a, b   = rx
+    t0, tf = rt
+    x = np.arange(a,  b+dx,  dx)
+    t = np.arange(t0, tf+dt, dt)
+    u = np.zeros((len(x),len(t)))
+    
+    r = dt/dx
+    nx = len(x)
+    nt = len(t)
+    # setting initial and boundary conditions
+    u[ :,0] = f(x)
+    u[ 0,:] = g1(t)
+    u[-1,:] = g2(t)
+    
+    for i in range(nt-1) :
+        u[1:nx-1, i+1] = u[1:nx-1, i] - k*r*(u[1:nx-1,i] - u[0:nx-2,i])
+    
+    return t, x, u                                                                                                                                                                     
+
+
+def lax_friedrichs_hyperbolic(f, g1, g2, k, rx, rt, dx, dt) : 
+    '''Solves IBVP u_t + k*u_x = 0, u(x,0)=f(x), u(a,t)=g1(t), u(b,t)=g2(t) 
+       for a<=x<=b, t>0
+       using the Lax-Friedrichs method                                            
+   f,g1,g2: functions describing initial and boundary conditions
+         k: coefficient of u_x term
+        rx: range of x; [a, b]
+        rt: range of t; [t0, tf]
+        dx: step in x
+        dt: step in t
+    '''
+    a, b   = rx
+    t0, tf = rt
+    x = np.arange(a,  b+dx,  dx)
+    t = np.arange(t0, tf+dt, dt)
+    u = np.zeros((len(x),len(t)))
+    
+    r = dt/dx
+    nx = len(x)
+    nt = len(t)
+    # setting initial and boundary conditions
+    u[ :,0] = f(x)
+    u[ 0,:] = g1(t)
+    u[-1,:] = g2(t)
+    
+    for i in range(nt-1) :
+        u[1:nx-1, i+1] = ((u[2:nx, i]+u[0:nx-2, i])/2
+                         - k*r/2*(u[2:nx,i] - u[0:nx-2,i]))
+        
+    return t, x, u 
+    
+
+def lax_wendroff_hyperbolic(f, g1, g2, k, rx, rt, dx, dt) : 
+    '''Solves IBVP u_t + k*u_x = 0, u(x,0)=f(x), u(a,t)=g1(t), u(b,t)=g2(t) 
+       for a<=x<=b, t>0
+       using the Lax-Wendroff method                                            
+   f,g1,g2: functions describing initial and boundary conditions
+         k: coefficient of u_x term
+        rx: range of x; [a, b]
+        rt: range of t; [t0, tf]
+        dx: step in x
+        dt: step in t
+     '''
+    a, b   = rx
+    t0, tf = rt
+    x = np.arange(a,  b+dx,  dx)
+    t = np.arange(t0, tf+dt, dt)
+    u = np.zeros((len(x),len(t)))
+    
+    r = dt/dx
+    nx = len(x)
+    nt = len(t)
+    # setting initial and boundary conditions
+    u[ :,0] = f(x)
+    u[ 0,:] = g1(t)
+    u[-1,:] = g2(t)
+    
+    for i in range(nt-1) :
+        u[1:nx-1, i+1] = (u[1:nx-1, i] 
+                          - k*r/2*(u[2:nx, i]-u[0:nx-2, i])
+                         + (k*r)**2/2*(u[2:nx,i] -2*u[1:nx-1, i] + u[0:nx-2,i]))
+    
+    return t, x, u 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
 #-------------------------------------------------------------------------------
 # ---------------------------------- Root Finding ------------------------------
 #-------------------------------------------------------------------------------
