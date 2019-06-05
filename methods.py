@@ -520,8 +520,8 @@ def lax_friedrichs_hyperbolic(f, g1, g2, k, rx, rt, dx, dt) :
     u[-1,:] = g2(t)
     
     for i in range(nt-1) :
-        u[1:nx-1, i+1] = ((u[2:nx, i]+u[0:nx-2, i])/2
-                         - k*r/2*(u[2:nx,i] - u[0:nx-2,i]))
+        u[1:nx-1, i+1] = ((u[2:nx, i] + u[0:nx-2, i])/2
+                         - k*r/2 * (u[2:nx,i] - u[0:nx-2,i]))
         
     return t, x, u 
     
@@ -554,7 +554,9 @@ def lax_wendroff_hyperbolic(f, g1, g2, k, rx, rt, dx, dt) :
     for i in range(nt-1) :
         u[1:nx-1, i+1] = (u[1:nx-1, i] 
                           - k*r/2*(u[2:nx, i]-u[0:nx-2, i])
-                         + (k*r)**2/2*(u[2:nx,i] -2*u[1:nx-1, i] + u[0:nx-2,i]))
+                          + (k*r)**2/2 * (u[2:nx,i] 
+                                      - 2*u[1:nx-1, i]
+                                        + u[0:nx-2,i]))
     
     return t, x, u 
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
